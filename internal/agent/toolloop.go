@@ -28,8 +28,8 @@ const (
 	readOnlyUniquenessThreshold = 0.6
 
 	// Same-result: same tool returning identical results with different args.
-	sameResultWarning  = 4
-	sameResultCritical = 6
+	sameResultWarning  = 10
+	sameResultCritical = 20
 )
 
 // mutatingTools are tools that indicate real progress (write/create/action).
