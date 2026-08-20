@@ -17,8 +17,13 @@
     "video": "视频",
     "voice": "语音消息"
   },
+  "rename": "重命名",
+  "moreActions": "更多操作",
   "deleteChat": "删除对话",
   "deleteChatConfirm": "此操作将永久删除此对话及其所有消息。",
+  "renameChat": "重命名对话",
+  "renameChatDescription": "为此对话设置名称。",
+  "renameChatPlaceholder": "对话名称",
   "newChat": "新建对话",
   "openSessions": "打开Session",
   "readOnly": "只读 — 此Session属于其他用户",

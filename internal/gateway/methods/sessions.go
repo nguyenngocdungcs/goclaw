@@ -137,16 +137,11 @@ func (m *SessionsMethods) handlePatch(ctx context.Context, client *gateway.Clien
 		return
 	}
 
-	if !canSeeAll(client.Role(), m.cfg.Gateway.OwnerIDs, client.UserID()) {
-		sess := m.sessions.Get(ctx, params.Key)
-		if sess == nil {
-			client.SendResponse(protocol.NewErrorResponse(req.ID, protocol.ErrNotFound, i18n.T(locale, i18n.MsgNotFound, "session", params.Key)))
-			return
-		}
-		if sess.UserID != client.UserID() {
-			client.SendResponse(protocol.NewErrorResponse(req.ID, protocol.ErrUnauthorized, i18n.T(locale, i18n.MsgPermissionDenied, "session")))
-			return
-		}
+	// Loads unconditionally, which also primes the store cache: SetLabel/Save
+	// only mutate cached sessions and silently no-op on a miss.
+	sess := m.loadAuthorizedSession(ctx, client, req.ID, params.Key)
+	if sess == nil {
+		return
 	}
 
 	// Apply label patch
@@ -172,6 +167,9 @@ func (m *SessionsMethods) handlePatch(ctx context.Context, client *gateway.Clien
 		"key": params.Key,
 	}))
 	emitAudit(m.eventBus, client, "session.patched", "session", params.Key)
+	if params.Label != nil {
+		broadcastSessionUpdated(m.eventBus, client.TenantID(), params.Key, *params.Label, sess.UserID)
+	}
 }
 
 func (m *SessionsMethods) handleDelete(ctx context.Context, client *gateway.Client, req *protocol.RequestFrame) {
@@ -266,17 +264,8 @@ func (m *SessionsMethods) handleCompact(ctx context.Context, client *gateway.Cli
 		keepLast = 4 // default: keep last 2 exchanges
 	}
 
-	// Auth check
-	sess := m.sessions.Get(ctx, params.Key)
-	if sess == nil {
-		client.SendResponse(protocol.NewErrorResponse(req.ID, protocol.ErrNotFound, i18n.T(locale, i18n.MsgNotFound, "session", params.Key)))
+	if m.loadAuthorizedSession(ctx, client, req.ID, params.Key) == nil {
 		return
-	}
-	if !canSeeAll(client.Role(), m.cfg.Gateway.OwnerIDs, client.UserID()) {
-		if sess.UserID != client.UserID() {
-			client.SendResponse(protocol.NewErrorResponse(req.ID, protocol.ErrUnauthorized, i18n.T(locale, i18n.MsgPermissionDenied, "session")))
-			return
-		}
 	}
 
 	history := m.sessions.GetHistory(ctx, params.Key)

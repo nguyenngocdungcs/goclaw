@@ -1,6 +1,11 @@
 {
+  "rename": "Переименовать",
+  "moreActions": "Ещё",
   "deleteChat": "Удалить чат",
   "deleteChatConfirm": "Это навсегда удалит эту беседу и все её сообщения.",
+  "renameChat": "Переименовать чат",
+  "renameChatDescription": "Задайте имя для этого разговора.",
+  "renameChatPlaceholder": "Название чата",
   "newChat": "Новый чат",
   "openSessions": "Открытые сессии",
   "readOnly": "Только чтение — эта сессия принадлежит другому пользователю",

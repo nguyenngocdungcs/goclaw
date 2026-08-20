@@ -1,6 +1,11 @@
 {
+  "rename": "Rename",
+  "moreActions": "More actions",
   "deleteChat": "Delete chat",
   "deleteChatConfirm": "This will permanently delete this conversation and all its messages.",
+  "renameChat": "Rename chat",
+  "renameChatDescription": "Choose a name for this conversation.",
+  "renameChatPlaceholder": "Chat name",
   "newChat": "New Chat",
   "openSessions": "Open sessions",
   "readOnly": "Read-only — this session belongs to another user",

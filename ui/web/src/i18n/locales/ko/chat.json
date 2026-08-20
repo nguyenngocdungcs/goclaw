@@ -1,6 +1,11 @@
 {
+  "rename": "이름 변경",
+  "moreActions": "더보기",
   "deleteChat": "채팅 삭제",
   "deleteChatConfirm": "이 대화와 모든 메시지가 영구적으로 삭제됩니다.",
+  "renameChat": "채팅 이름 변경",
+  "renameChatDescription": "이 대화의 이름을 지정하세요.",
+  "renameChatPlaceholder": "채팅 이름",
   "newChat": "새 채팅",
   "openSessions": "세션 열기",
   "readOnly": "읽기 전용 — 이 세션은 다른 사용자의 것입니다",
