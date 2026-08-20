@@ -62,15 +62,37 @@ export function useChatSessions(agentId: string) {
     }
   }, [ws, connected, loadSessions]);
 
-  // Update session label in-place when backend generates a title.
+  const renameSession = useCallback(async (key: string, label: string) => {
+    if (!connected) return;
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    try {
+      await ws.call(Methods.SESSIONS_PATCH, { key, label: trimmed });
+      setSessions((prev) =>
+        prev.map((s) => (s.key === key ? { ...s, label: trimmed } : s)),
+      );
+      toast.success(i18next.t("sessions:toast.updated"));
+    } catch (err) {
+      toast.error(i18next.t("sessions:toast.updateFailed"), userFriendlyError(err));
+      throw err;
+    }
+  }, [ws, connected]);
+
+  // Update session label in-place when backend generates a title, or when
+  // another client renames the session. Returns `prev` untouched when nothing
+  // changes so React can skip the re-render — this event also echoes back to
+  // the client that made the rename, and reaches every admin tab in the tenant.
   const handleSessionUpdated = useCallback((payload: unknown) => {
     const event = payload as { sessionKey?: string; label?: string };
     if (!event?.sessionKey || !event?.label) return;
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.key === event.sessionKey ? { ...s, label: event.label } : s,
-      ),
-    );
+    setSessions((prev) => {
+      const i = prev.findIndex((s) => s.key === event.sessionKey);
+      const current = i === -1 ? undefined : prev[i];
+      if (!current || current.label === event.label) return prev;
+      const next = prev.slice();
+      next[i] = { ...current, label: event.label };
+      return next;
+    });
   }, []);
   useWsEvent(Events.SESSION_UPDATED, handleSessionUpdated);
 
@@ -81,5 +103,6 @@ export function useChatSessions(agentId: string) {
     refresh: loadSessions,
     buildNewSessionKey,
     deleteSession,
+    renameSession,
   };
 }

@@ -442,9 +442,8 @@ func (m *ChatMethods) dispatchChatSends(requests []chatSendRequest) {
 					slog.Warn("failed to save session title", "sessionKey", sessionKey, "error", err)
 					return
 				}
-				bus.BroadcastForTenant(m.eventBus, protocol.EventSessionUpdated,
-					primary.client.TenantID(),
-					map[string]string{"sessionKey": sessionKey, "label": title, "userId": userID})
+				// userID is the session owner here — this runs on the owner's own turn.
+				broadcastSessionUpdated(m.eventBus, primary.client.TenantID(), sessionKey, title, userID)
 			}()
 		}
 
