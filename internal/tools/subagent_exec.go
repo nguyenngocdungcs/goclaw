@@ -257,6 +257,8 @@ func (sm *SubagentManager) executeTask(ctx context.Context, task *SubagentTask) 
 
 	// Run LLM iteration loop (similar to agent loop but simplified)
 	var mediaFiles []bus.MediaFile
+	var lastPartialContent string
+	answered := false
 	maxIterations := 20
 
 	for iteration < maxIterations {
@@ -329,7 +331,14 @@ func (sm *SubagentManager) executeTask(ctx context.Context, task *SubagentTask) 
 		// No tool calls → done
 		if len(resp.ToolCalls) == 0 {
 			finalContent = resp.Content
+			answered = true
 			break
+		}
+
+		// Keep the narration that accompanies tool calls: it is the only partial
+		// output available if the loop later exhausts its iteration budget.
+		if text := strings.TrimSpace(resp.Content); text != "" {
+			lastPartialContent = text
 		}
 
 		// Build assistant message
@@ -374,9 +383,20 @@ func (sm *SubagentManager) executeTask(ctx context.Context, task *SubagentTask) 
 		}
 	}
 
+	exhausted := !answered
+	if exhausted {
+		slog.Warn("subagent iteration budget exhausted",
+			"id", task.ID, "label", task.Label,
+			"iterations", iteration, "max_iterations", maxIterations,
+			"has_partial_output", lastPartialContent != "")
+	}
+
 	sm.mu.Lock()
 	if task.Status != TaskStatusCancelled {
-		if finalContent == "" {
+		switch {
+		case exhausted:
+			finalContent = iterationBudgetExhaustedResult(maxIterations, lastPartialContent)
+		case strings.TrimSpace(finalContent) == "":
 			finalContent = "Task completed but no final response was generated."
 		}
 		finalContent = tracing.RedactText(ctx, finalContent)
@@ -386,9 +406,23 @@ func (sm *SubagentManager) executeTask(ctx context.Context, task *SubagentTask) 
 	}
 	sm.mu.Unlock()
 
-	slog.Info("subagent completed", "id", task.ID, "iterations", iteration)
+	slog.Info("subagent completed", "id", task.ID, "iterations", iteration, "exhausted", exhausted)
 
 	return iteration
+}
+
+// iterationBudgetExhaustedResult explains to the parent agent that the subagent
+// stopped mid-task instead of answering, and carries whatever partial output the
+// subagent produced so the work is not silently lost.
+func iterationBudgetExhaustedResult(maxIterations int, partial string) string {
+	msg := fmt.Sprintf(
+		"INCOMPLETE: the subagent hit its iteration limit (%d tool-calling iterations) and stopped before writing a final answer. "+
+			"Treat the task as unfinished — re-run it with a narrower scope or split it into smaller subagent tasks.",
+		maxIterations)
+	if partial == "" {
+		return msg + "\n\nNo partial output was produced."
+	}
+	return msg + "\n\nLast partial output before stopping:\n" + partial
 }
 
 func (sm *SubagentManager) chatSubagentWithUsageCap(ctx context.Context, task *SubagentTask, activeProvider providers.Provider, model string, chatReq providers.ChatRequest, iteration, attempt int) (*providers.ChatResponse, error) {
